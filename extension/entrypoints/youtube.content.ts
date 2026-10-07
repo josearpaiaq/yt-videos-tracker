@@ -1,5 +1,6 @@
 import type { Video, VideoPatch } from '@/lib/api';
 import { sendToBackground, type ContentMessage, type PlayerState } from '@/lib/messages';
+import { messagesFor, prefersDark, resolveLanguage } from '@/lib/i18n';
 import { formatTime } from '@/lib/time';
 
 const SAVE_INTERVAL_MS = 15_000;
@@ -128,10 +129,15 @@ class Tracker {
 
     const before = player.currentTime;
     player.currentTime = position;
-    showToast(`Resumed at ${formatTime(position)}`, {
-      label: 'Undo',
-      onClick: () => (player.currentTime = before),
-    });
+    void this.showResumedToast(position, () => (player.currentTime = before));
+  }
+
+  /** Shows the "Resumed at" toast in the user's language and theme. */
+  private async showResumedToast(position: number, undo: () => void) {
+    const user = await sendToBackground({ type: 'GET_ME' }).catch(() => null);
+    if (this.stopped) return;
+    const t = messagesFor(resolveLanguage(user));
+    showToast(t.resumedAt(formatTime(position)), { label: t.undo, onClick: undo }, prefersDark(user));
   }
 
   /** True when the page shows this video's own media (not an ad, not the previous video). */
@@ -185,7 +191,7 @@ function waitFor<T>(check: () => T | null, cancelled: () => boolean): Promise<T 
 
 let toastHost: HTMLElement | null = null;
 
-function showToast(text: string, action: { label: string; onClick: () => void }) {
+function showToast(text: string, action: { label: string; onClick: () => void }, dark: boolean) {
   toastHost?.remove();
   const host = document.createElement('div');
   toastHost = host;
@@ -194,13 +200,17 @@ function showToast(text: string, action: { label: string; onClick: () => void })
     <style>
       .toast { position: fixed; left: 24px; bottom: 24px; z-index: 2147483647;
         display: flex; align-items: center; gap: 16px; padding: 12px 16px;
-        background: #18181b; color: #fafafa; border-radius: 10px;
-        font: 500 14px/1.2 system-ui, sans-serif; box-shadow: 0 8px 24px rgb(0 0 0 / .35); }
+        border-radius: 10px; font: 500 14px/1.2 system-ui, sans-serif;
+        background: #fff; color: #18181b; border: 1px solid #e4e4e7;
+        box-shadow: 0 8px 24px rgb(0 0 0 / .15); }
+      .toast.dark { background: #18181b; color: #fafafa; border-color: #27272a;
+        box-shadow: 0 8px 24px rgb(0 0 0 / .35); }
       .dot { width: 8px; height: 8px; border-radius: 50%; background: #dc2626; }
-      button { all: unset; cursor: pointer; color: #fca5a5; font-weight: 600; }
+      button { all: unset; cursor: pointer; color: #dc2626; font-weight: 600; }
+      .dark button { color: #fca5a5; }
       button:hover { text-decoration: underline; }
     </style>
-    <div class="toast" role="status"><span class="dot"></span><span></span><button></button></div>`;
+    <div class="toast${dark ? ' dark' : ''}" role="status"><span class="dot"></span><span></span><button></button></div>`;
   root.querySelector('span:not(.dot)')!.textContent = text;
   const button = root.querySelector('button')!;
   button.textContent = action.label;

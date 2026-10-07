@@ -7,6 +7,8 @@ export interface User {
   email: string;
   name: string;
   avatar_url: string;
+  language: '' | 'en' | 'es';
+  theme: 'system' | 'light' | 'dark';
 }
 
 export interface List {

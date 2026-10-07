@@ -1,47 +1,73 @@
+import { Bookmark, CloudCheck, ExternalLink, Loader2, LogIn, MonitorPlay } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { api, ApiError, type List, type Video, type VideoPatch, type VideoStatus } from '@/lib/api';
+import {
+  api,
+  ApiError,
+  type List,
+  type User,
+  type Video,
+  type VideoPatch,
+  type VideoStatus,
+} from '@/lib/api';
 import { DASHBOARD_URL } from '@/lib/config';
+import { messagesFor, prefersDark, resolveLanguage, type Messages } from '@/lib/i18n';
 import type { ContentMessage, PlayerState } from '@/lib/messages';
 import { formatTime } from '@/lib/time';
 
 type State =
   | { kind: 'loading' }
   | { kind: 'signed-out' }
-  | { kind: 'error'; message: string }
+  | { kind: 'error' }
   | { kind: 'no-video' }
   | { kind: 'video'; tabId: number; player: PlayerState; video: Video | null; lists: List[] };
 
 const selectClass =
   'w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-red-500 dark:border-zinc-700 dark:bg-zinc-900';
 
-async function load(): Promise<State> {
+async function load(): Promise<{ user: User | null; state: State }> {
+  let user: User;
   try {
-    await api.me();
+    user = await api.me();
   } catch (err) {
-    if (err instanceof ApiError && err.status === 401) return { kind: 'signed-out' };
-    return { kind: 'error', message: 'Could not reach the server.' };
+    const signedOut = err instanceof ApiError && err.status === 401;
+    return { user: null, state: { kind: signedOut ? 'signed-out' : 'error' } };
   }
 
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id === undefined) return { kind: 'no-video' };
+  if (tab?.id === undefined) return { user, state: { kind: 'no-video' } };
   let player: PlayerState | null = null;
   try {
-    player = await browser.tabs.sendMessage(tab.id, { type: 'GET_PLAYER_STATE' } satisfies ContentMessage);
+    player = await browser.tabs.sendMessage(tab.id, {
+      type: 'GET_PLAYER_STATE',
+    } satisfies ContentMessage);
   } catch {
     // No content script in this tab (not YouTube, or opened before installing).
   }
-  if (!player) return { kind: 'no-video' };
+  if (!player) return { user, state: { kind: 'no-video' } };
 
   const [video, lists] = await Promise.all([api.findVideo(player.youtubeId), api.getLists()]);
-  return { kind: 'video', tabId: tab.id, player, video, lists };
+  return { user, state: { kind: 'video', tabId: tab.id, player, video, lists } };
 }
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<State>({ kind: 'loading' });
+  const t = messagesFor(resolveLanguage(user));
 
   useEffect(() => {
-    load().then(setState, (err: Error) => setState({ kind: 'error', message: err.message }));
+    load().then(
+      (result) => {
+        setUser(result.user);
+        setState(result.state);
+      },
+      () => setState({ kind: 'error' }),
+    );
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', prefersDark(user));
+    document.documentElement.lang = resolveLanguage(user);
+  }, [user]);
 
   return (
     <div className="p-4">
@@ -52,55 +78,63 @@ export default function App() {
           href={DASHBOARD_URL}
           target="_blank"
           rel="noreferrer"
-          className="ml-auto text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          className="ml-auto inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
         >
-          Dashboard ↗
+          {t.dashboard}
+          <ExternalLink className="size-3" />
         </a>
       </header>
-      <Body state={state} setState={setState} />
+      <Body state={state} setState={setState} t={t} />
     </div>
   );
 }
 
-function Body({ state, setState }: { state: State; setState: (s: State) => void }) {
+function Body({ state, setState, t }: { state: State; setState: (s: State) => void; t: Messages }) {
   switch (state.kind) {
     case 'loading':
-      return <p className="text-zinc-500">Loading…</p>;
+      return (
+        <p className="flex items-center gap-2 text-zinc-500">
+          <Loader2 className="size-4 animate-spin" />
+          {t.loading}
+        </p>
+      );
     case 'error':
-      return <p className="text-red-600 dark:text-red-400">{state.message}</p>;
+      return <p className="text-red-600 dark:text-red-400">{t.serverUnreachable}</p>;
     case 'signed-out':
       return (
         <div className="space-y-3">
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Sign in on the dashboard to start tracking your videos.
-          </p>
+          <p className="text-zinc-600 dark:text-zinc-400">{t.signInPrompt}</p>
           <a
             href={DASHBOARD_URL}
             target="_blank"
             rel="noreferrer"
-            className="block rounded-lg bg-red-600 px-3 py-2 text-center font-semibold text-white hover:bg-red-700"
+            className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white hover:bg-red-700"
           >
-            Sign in
+            <LogIn className="size-4" />
+            {t.signIn}
           </a>
         </div>
       );
     case 'no-video':
       return (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Open a YouTube video to track it. If one is already open, reload its tab.
-        </p>
+        <div className="flex gap-3 text-zinc-600 dark:text-zinc-400">
+          <MonitorPlay className="size-5 shrink-0" />
+          <p>{t.noVideo}</p>
+        </div>
       );
     case 'video':
-      return <VideoPanel state={state} setState={setState} />;
+      return <VideoPanel state={state} setState={setState} t={t} />;
   }
 }
 
 function VideoPanel({
   state,
   setState,
+  t,
 }: {
   state: Extract<State, { kind: 'video' }>;
   setState: (s: State) => void;
+  t: Messages;
 }) {
   const { player, video, lists, tabId } = state;
   const [listId, setListId] = useState<number | null>(null);
@@ -146,7 +180,7 @@ function VideoPanel({
           alt=""
           className="aspect-video w-24 shrink-0 self-start rounded-md object-cover"
         />
-        <p className="line-clamp-3 font-semibold leading-snug">{title}</p>
+        <p className="line-clamp-3 leading-snug font-semibold">{title}</p>
       </div>
 
       <div className="space-y-1.5">
@@ -161,34 +195,41 @@ function VideoPanel({
 
       {video ? (
         <>
-          <p className="text-xs text-zinc-500">
-            Progress saves automatically while you watch.
+          <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+            <CloudCheck className="size-3.5" />
+            {t.autosaveHint}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <select
               value={video.status}
               onChange={(e) => update({ status: e.target.value as VideoStatus })}
               disabled={busy}
-              aria-label="Status"
+              aria-label={t.status}
               className={selectClass}
             >
-              <option value="pending">Pending</option>
-              <option value="watching">Watching</option>
-              <option value="done">Done</option>
+              <option value="pending">{t.pending}</option>
+              <option value="watching">{t.watching}</option>
+              <option value="done">{t.done}</option>
             </select>
-            <ListSelect lists={lists} value={video.list_id} onChange={(list_id) => update({ list_id })} />
+            <ListSelect
+              lists={lists}
+              value={video.list_id}
+              onChange={(list_id) => update({ list_id })}
+              t={t}
+            />
           </div>
         </>
       ) : (
         <div className="space-y-2">
-          <ListSelect lists={lists} value={listId} onChange={setListId} />
+          <ListSelect lists={lists} value={listId} onChange={setListId} t={t} />
           <button
             type="button"
             onClick={track}
             disabled={busy}
-            className="w-full rounded-lg bg-red-600 px-3 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
           >
-            {busy ? 'Tracking…' : 'Track this video'}
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Bookmark className="size-4" />}
+            {busy ? t.tracking : t.track}
           </button>
         </div>
       )}
@@ -202,19 +243,21 @@ function ListSelect({
   lists,
   value,
   onChange,
+  t,
 }: {
   lists: List[];
   value: number | null;
   onChange: (listId: number | null) => void;
+  t: Messages;
 }) {
   return (
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-      aria-label="List"
+      aria-label={t.list}
       className={selectClass}
     >
-      <option value="">No list</option>
+      <option value="">{t.noList}</option>
       {lists.map((l) => (
         <option key={l.id} value={l.id}>
           {l.name}
