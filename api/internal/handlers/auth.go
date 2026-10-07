@@ -91,12 +91,64 @@ func (h *Handler) logout(c *gin.Context) {
 }
 
 func (h *Handler) me(c *gin.Context) {
-	var user models.User
-	if err := h.db.First(&user, auth.UserID(c)).Error; err != nil {
-		errorJSON(c, http.StatusUnauthorized, "user not found")
+	user, ok := h.currentUser(c)
+	if !ok {
 		return
 	}
 	c.JSON(http.StatusOK, user)
+}
+
+type updateMeInput struct {
+	Language *string `json:"language"`
+	Theme    *string `json:"theme"`
+}
+
+// updateMe changes the user's language and theme preferences.
+func (h *Handler) updateMe(c *gin.Context) {
+	var in updateMeInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		errorJSON(c, http.StatusBadRequest, "invalid body")
+		return
+	}
+	user, ok := h.currentUser(c)
+	if !ok {
+		return
+	}
+	if in.Language != nil {
+		if *in.Language != "en" && *in.Language != "es" {
+			errorJSON(c, http.StatusBadRequest, "language must be en or es")
+			return
+		}
+		user.Language = *in.Language
+	}
+	if in.Theme != nil {
+		if *in.Theme != "system" && *in.Theme != "light" && *in.Theme != "dark" {
+			errorJSON(c, http.StatusBadRequest, "theme must be system, light or dark")
+			return
+		}
+		user.Theme = *in.Theme
+	}
+	if err := h.db.Save(&user).Error; err != nil {
+		errorJSON(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}
+
+// currentUser loads the authenticated user. A missing user means the session
+// outlived the account (401); any other error is a server error.
+func (h *Handler) currentUser(c *gin.Context) (models.User, bool) {
+	var user models.User
+	err := h.db.First(&user, auth.UserID(c)).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		errorJSON(c, http.StatusUnauthorized, "user not found")
+		return user, false
+	}
+	if err != nil {
+		errorJSON(c, http.StatusInternalServerError, err.Error())
+		return user, false
+	}
+	return user, true
 }
 
 func (h *Handler) setAccessCookie(c *gin.Context, userID uint) bool {
