@@ -23,6 +23,8 @@ export interface PlayerState {
   title: string;
   currentTime: number;
   duration: number;
+  /** The tracked record the content script already holds: null if untracked, absent if unknown yet. */
+  tracked?: Video | null;
 }
 
 export async function sendToBackground<M extends BackgroundMessage>(

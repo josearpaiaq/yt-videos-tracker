@@ -9,7 +9,8 @@ const SAVE_INTERVAL_MS = 15_000;
 
 /** Follows one tracked video: resumes it, autosaves progress and marks it done at the end. */
 export class Tracker {
-  private video: Video | null = null;
+  // undefined until the lookup finishes, then the tracked record or null.
+  private video: Video | null | undefined = undefined;
   private player: HTMLVideoElement | null = null;
   private ready = false;
   private stopped = false;
@@ -18,6 +19,11 @@ export class Tracker {
 
   constructor(readonly youtubeId: string) {
     void this.start();
+  }
+
+  /** Latest known record (kept fresh by autosave), so the popup can render without the API. */
+  get trackedVideo(): Video | null | undefined {
+    return this.video;
   }
 
   private async start() {

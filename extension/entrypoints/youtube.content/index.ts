@@ -25,7 +25,11 @@ export default defineContentScript({
       _sender: unknown,
       sendResponse: (state: PlayerState | null) => void,
     ) => {
-      if (message.type === 'GET_PLAYER_STATE') sendResponse(playerState());
+      if (message.type === 'GET_PLAYER_STATE') {
+        const state = playerState();
+        const known = state && tracker?.youtubeId === state.youtubeId;
+        sendResponse(state && { ...state, tracked: known ? tracker?.trackedVideo : undefined });
+      }
       if (message.type === 'TRACKING_CHANGED') sync(true);
     };
 

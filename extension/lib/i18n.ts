@@ -5,6 +5,7 @@ export type Language = 'en' | 'es';
 const en = {
   dashboard: 'Dashboard',
   loading: 'Loading…',
+  syncing: 'Syncing…',
   serverUnreachable: 'Could not reach the server.',
   signInPrompt: 'Sign in on the dashboard to start tracking your videos.',
   signIn: 'Sign in',
@@ -27,6 +28,7 @@ export type Messages = typeof en;
 const es: Messages = {
   dashboard: 'Dashboard',
   loading: 'Cargando…',
+  syncing: 'Sincronizando…',
   serverUnreachable: 'No se pudo conectar con el servidor.',
   signInPrompt: 'Inicia sesión en el dashboard para empezar a registrar tus videos.',
   signIn: 'Iniciar sesión',
