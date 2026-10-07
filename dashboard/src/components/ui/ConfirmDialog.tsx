@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import { ConfirmContext, type Confirm, type ConfirmOptions } from './confirm'
 
 /** Provides `useConfirm()`, an awaitable replacement for window.confirm built on <dialog>. */

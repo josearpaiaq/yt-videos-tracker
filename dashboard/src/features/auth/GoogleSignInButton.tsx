@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { useI18n } from '../i18n'
-import { useLogin } from '../queries'
-import { Logo } from './Logo'
+import { useI18n } from '@/i18n'
+import { useLogin } from '@/lib/queries'
 
-export function LoginPage() {
-  const { language, t } = useI18n()
+/** Renders Google's "Continue with Google" button and signs in with the returned credential. */
+export function GoogleSignInButton() {
+  const { language } = useI18n()
   const buttonRef = useRef<HTMLDivElement>(null)
   const login = useLogin()
   const { mutate } = login
@@ -33,16 +33,11 @@ export function LoginPage() {
   }, [mutate, language])
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center motion-safe:animate-fade-in">
-        <Logo className="mx-auto size-12" />
-        <h1 className="mt-4 text-2xl font-bold tracking-tight">Where Was I</h1>
-        <p className="mt-2 text-sm text-zinc-500">{t.tagline}</p>
-        <div className="mt-8 flex h-11 justify-center" ref={buttonRef} />
-        {login.error && (
-          <p className="mt-4 text-sm text-red-600 dark:text-red-400">{login.error.message}</p>
-        )}
-      </div>
-    </div>
+    <>
+      <div className="flex h-11 justify-center" ref={buttonRef} />
+      {login.error && (
+        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{login.error.message}</p>
+      )}
+    </>
   )
 }

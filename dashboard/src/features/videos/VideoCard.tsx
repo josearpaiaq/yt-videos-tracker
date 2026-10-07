@@ -1,12 +1,13 @@
-import { Loader2, NotebookPen, Play, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Loader2, Play, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { List, Video, VideoPatch, VideoStatus } from '../api'
-import { useI18n } from '../i18n'
-import { useDeleteVideo, useUpdateVideo } from '../queries'
-import { formatTime, parseTime, youtubeUrl } from '../time'
-import { useConfirm } from './confirm'
-import { IconButton } from './IconButton'
+import { useConfirm } from '@/components/ui/confirm'
+import { IconButton } from '@/components/ui/IconButton'
+import { useI18n } from '@/i18n'
+import type { List, Video, VideoPatch, VideoStatus } from '@/lib/api'
+import { useDeleteVideo, useUpdateVideo } from '@/lib/queries'
+import { formatTime, youtubeUrl } from '@/lib/time'
+import { NotesField } from './NotesField'
+import { TimeField } from './TimeField'
 
 const statusStyles: Record<VideoStatus, string> = {
   pending: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
@@ -142,120 +143,5 @@ export function VideoCard({ video, lists }: { video: Video; lists: List[] }) {
         <NotesField notes={video.notes} onSave={(notes) => update({ notes }, () => t.notesSaved)} />
       </div>
     </article>
-  )
-}
-
-function TimeField({
-  seconds,
-  duration,
-  onSave,
-}: {
-  seconds: number
-  duration: number
-  onSave: (seconds: number) => void
-}) {
-  const { t } = useI18n()
-  const [draft, setDraft] = useState(formatTime(seconds))
-  const [invalid, setInvalid] = useState(false)
-  const [synced, setSynced] = useState(seconds)
-
-  // Reset the draft whenever the saved value changes.
-  if (seconds !== synced) {
-    setSynced(seconds)
-    setDraft(formatTime(seconds))
-    setInvalid(false)
-  }
-
-  function commit() {
-    const parsed = parseTime(draft)
-    if (parsed === null) {
-      setInvalid(true)
-      return
-    }
-    const clamped = duration > 0 ? Math.min(parsed, duration) : parsed
-    setInvalid(false)
-    setDraft(formatTime(clamped))
-    if (clamped !== seconds) onSave(clamped)
-  }
-
-  return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="text-zinc-500">{t.at}</span>
-      <input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur()
-          if (e.key === 'Escape') {
-            setDraft(formatTime(seconds))
-            setInvalid(false)
-          }
-        }}
-        title={t.timeHint}
-        aria-invalid={invalid}
-        className={`w-24 rounded-md border px-2 py-1 text-center font-mono text-base font-medium tabular-nums outline-none focus:ring-2 dark:bg-zinc-950 ${
-          invalid
-            ? 'border-red-500 ring-2 ring-red-500/20'
-            : 'border-zinc-300 focus:border-red-500 focus:ring-red-500/20 dark:border-zinc-700'
-        }`}
-      />
-    </label>
-  )
-}
-
-function NotesField({ notes, onSave }: { notes: string; onSave: (notes: string) => void }) {
-  const { t } = useI18n()
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState(notes)
-
-  if (!open) {
-    return notes ? (
-      <button
-        type="button"
-        onClick={() => {
-          setDraft(notes)
-          setOpen(true)
-        }}
-        className="flex gap-2 text-left text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-      >
-        <NotebookPen className="mt-0.5 size-3.5 shrink-0" />
-        <span className="line-clamp-2 whitespace-pre-line italic">{notes}</span>
-      </button>
-    ) : (
-      <button
-        type="button"
-        onClick={() => {
-          setDraft('')
-          setOpen(true)
-        }}
-        className="inline-flex items-center gap-1.5 self-start text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-      >
-        <NotebookPen className="size-3.5" />
-        {t.addNote}
-      </button>
-    )
-  }
-
-  return (
-    <textarea
-      autoFocus
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        setOpen(false)
-        if (draft !== notes) onSave(draft)
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          setDraft(notes)
-          setOpen(false)
-        }
-      }}
-      rows={3}
-      placeholder={t.notesPlaceholder}
-      aria-label={t.notes}
-      className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-950"
-    />
   )
 }

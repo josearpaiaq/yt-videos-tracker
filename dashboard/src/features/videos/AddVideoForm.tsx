@@ -1,9 +1,9 @@
 import { Loader2, Plus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
-import { ApiError } from '../api'
-import { useI18n } from '../i18n'
-import { useCreateVideo } from '../queries'
+import { ApiError } from '@/lib/api'
+import { useI18n } from '@/i18n'
+import { useCreateVideo } from '@/lib/queries'
 
 export function AddVideoForm({ listId }: { listId: number | null }) {
   const { t } = useI18n()
