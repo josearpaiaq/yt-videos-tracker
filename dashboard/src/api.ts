@@ -5,7 +5,11 @@ export interface User {
   email: string
   name: string
   avatar_url: string
+  language: '' | 'en' | 'es'
+  theme: 'system' | 'light' | 'dark'
 }
+
+export type Preferences = Partial<Pick<User, 'language' | 'theme'>>
 
 export interface List {
   id: number
@@ -75,6 +79,8 @@ async function request<T>(path: string, init?: RequestInit, retry = true): Promi
 
 export const api = {
   me: () => request<User>('/me'),
+  updateMe: (prefs: Preferences) =>
+    request<User>('/me', { method: 'PATCH', body: JSON.stringify(prefs) }),
   loginWithGoogle: (credential: string) =>
     request<User>('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),

@@ -1,13 +1,13 @@
-import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 
 export function IconButton({
   label,
+  icon: Icon,
   onClick,
-  children,
 }: {
   label: string
+  icon: LucideIcon
   onClick: () => void
-  children: ReactNode
 }) {
   return (
     <button
@@ -15,19 +15,9 @@ export function IconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="rounded p-1 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+      className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
     >
-      <svg
-        viewBox="0 0 24 24"
-        className="size-3.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {children}
-      </svg>
+      <Icon className="size-4" />
     </button>
   )
 }

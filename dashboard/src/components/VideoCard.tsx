@@ -1,7 +1,11 @@
+import { Loader2, NotebookPen, Play, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { List, Video, VideoPatch, VideoStatus } from '../api'
+import { useI18n } from '../i18n'
 import { useDeleteVideo, useUpdateVideo } from '../queries'
 import { formatTime, parseTime, youtubeUrl } from '../time'
+import { useConfirm } from './confirm'
 import { IconButton } from './IconButton'
 
 const statusStyles: Record<VideoStatus, string> = {
@@ -14,25 +18,44 @@ const selectClass =
   'rounded-md border border-zinc-200 bg-white px-1.5 py-1 text-xs outline-none focus:border-red-500 dark:border-zinc-700 dark:bg-zinc-900'
 
 export function VideoCard({ video, lists }: { video: Video; lists: List[] }) {
+  const { t } = useI18n()
+  const confirm = useConfirm()
   const updateVideo = useUpdateVideo()
   const deleteVideo = useDeleteVideo()
-  const update = (patch: VideoPatch) => updateVideo.mutate({ id: video.id, patch })
+
+  const update = (patch: VideoPatch, successMessage?: (video: Video) => string) =>
+    updateVideo.mutate(
+      { id: video.id, patch },
+      {
+        onSuccess: (updated) => successMessage && toast.success(successMessage(updated)),
+        onError: (err) => toast.error(err.message),
+      },
+    )
 
   const progress =
     video.duration_seconds > 0 ? (video.position_seconds / video.duration_seconds) * 100 : 0
   const resumeUrl = youtubeUrl(video.youtube_id, video.position_seconds)
 
-  function remove() {
-    if (confirm(`Remove “${video.title}”?`)) deleteVideo.mutate(video.id)
+  async function remove() {
+    const ok = await confirm({
+      title: t.confirmRemoveVideo,
+      description: t.confirmRemoveVideoBody(video.title),
+      confirmLabel: t.remove,
+    })
+    if (!ok) return
+    deleteVideo.mutate(video.id, {
+      onSuccess: () => toast.success(t.videoRemoved),
+      onError: (err) => toast.error(err.message),
+    })
   }
 
   return (
-    <article className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-3 sm:flex-row dark:border-zinc-800 dark:bg-zinc-900">
+    <article className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-3 motion-safe:animate-fade-in sm:flex-row dark:border-zinc-800 dark:bg-zinc-900">
       <a
         href={resumeUrl}
         target="_blank"
         rel="noreferrer"
-        className="relative block aspect-video shrink-0 self-start overflow-hidden rounded-lg bg-zinc-200 sm:w-56 dark:bg-zinc-800"
+        className="relative block aspect-video shrink-0 self-start overflow-hidden rounded-lg bg-zinc-200 max-sm:w-full sm:w-56 dark:bg-zinc-800"
       >
         {video.thumbnail_url && (
           <img src={video.thumbnail_url} alt="" className="size-full object-cover" loading="lazy" />
@@ -54,38 +77,39 @@ export function VideoCard({ video, lists }: { video: Video; lists: List[] }) {
               href={resumeUrl}
               target="_blank"
               rel="noreferrer"
-              className="line-clamp-2 font-semibold leading-snug hover:underline"
+              className="line-clamp-2 leading-snug font-semibold hover:underline"
             >
               {video.title}
             </a>
             <p className="truncate text-sm text-zinc-500">{video.channel}</p>
           </div>
-          <IconButton label="Remove video" onClick={remove}>
-            <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-          </IconButton>
+          <IconButton label={t.removeVideo} icon={Trash2} onClick={remove} />
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <TimeField
             seconds={video.position_seconds}
             duration={video.duration_seconds}
-            onSave={(position_seconds) => update({ position_seconds })}
+            onSave={(position_seconds) =>
+              update({ position_seconds }, (v) => t.positionSaved(formatTime(v.position_seconds)))
+            }
           />
           {video.duration_seconds > 0 && (
             <span className="font-mono text-sm text-zinc-500 tabular-nums">
               / {formatTime(video.duration_seconds)} · {Math.round(progress)}%
             </span>
           )}
+          {updateVideo.isPending && (
+            <Loader2 className="size-4 animate-spin text-zinc-400" aria-label="…" />
+          )}
           <a
             href={resumeUrl}
             target="_blank"
             rel="noreferrer"
-            className="ml-auto inline-flex items-center gap-1 rounded-md bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-zinc-700 max-sm:w-full max-sm:justify-center max-sm:py-2 sm:ml-auto dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
-            <svg viewBox="0 0 24 24" className="size-3" fill="currentColor" aria-hidden>
-              <path d="M7 4v16l13-8z" />
-            </svg>
-            Resume at {formatTime(video.position_seconds)}
+            <Play className="size-3 fill-current" />
+            {t.resumeAt(formatTime(video.position_seconds))}
           </a>
         </div>
 
@@ -93,33 +117,29 @@ export function VideoCard({ video, lists }: { video: Video; lists: List[] }) {
           <select
             value={video.status}
             onChange={(e) => update({ status: e.target.value as VideoStatus })}
-            aria-label="Status"
+            aria-label={t.status}
             className={`rounded-md px-2 py-1 text-xs font-semibold outline-none ${statusStyles[video.status]}`}
           >
-            <option value="pending">Pending</option>
-            <option value="watching">Watching</option>
-            <option value="done">Done</option>
+            <option value="pending">{t.pending}</option>
+            <option value="watching">{t.watching}</option>
+            <option value="done">{t.statusDone}</option>
           </select>
           <select
             value={video.list_id ?? ''}
             onChange={(e) => update({ list_id: e.target.value ? Number(e.target.value) : null })}
-            aria-label="List"
+            aria-label={t.list}
             className={selectClass}
           >
-            <option value="">No list</option>
+            <option value="">{t.noList}</option>
             {lists.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
               </option>
             ))}
           </select>
-          {updateVideo.isPending && <span className="text-xs text-zinc-400">Saving…</span>}
-          {updateVideo.error && (
-            <span className="text-xs text-red-600">{updateVideo.error.message}</span>
-          )}
         </div>
 
-        <NotesField notes={video.notes} onSave={(notes) => update({ notes })} />
+        <NotesField notes={video.notes} onSave={(notes) => update({ notes }, () => t.notesSaved)} />
       </div>
     </article>
   )
@@ -134,6 +154,7 @@ function TimeField({
   duration: number
   onSave: (seconds: number) => void
 }) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState(formatTime(seconds))
   const [invalid, setInvalid] = useState(false)
   const [synced, setSynced] = useState(seconds)
@@ -159,7 +180,7 @@ function TimeField({
 
   return (
     <label className="flex items-center gap-2 text-sm">
-      <span className="text-zinc-500">At</span>
+      <span className="text-zinc-500">{t.at}</span>
       <input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -171,7 +192,7 @@ function TimeField({
             setInvalid(false)
           }
         }}
-        title="h:mm:ss, m:ss or minutes"
+        title={t.timeHint}
         aria-invalid={invalid}
         className={`w-24 rounded-md border px-2 py-1 text-center font-mono text-base font-medium tabular-nums outline-none focus:ring-2 dark:bg-zinc-950 ${
           invalid
@@ -184,6 +205,7 @@ function TimeField({
 }
 
 function NotesField({ notes, onSave }: { notes: string; onSave: (notes: string) => void }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(notes)
 
@@ -195,9 +217,10 @@ function NotesField({ notes, onSave }: { notes: string; onSave: (notes: string) 
           setDraft(notes)
           setOpen(true)
         }}
-        className="line-clamp-2 text-left text-sm whitespace-pre-line text-zinc-600 italic hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        className="flex gap-2 text-left text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
       >
-        {notes}
+        <NotebookPen className="mt-0.5 size-3.5 shrink-0" />
+        <span className="line-clamp-2 whitespace-pre-line italic">{notes}</span>
       </button>
     ) : (
       <button
@@ -206,9 +229,10 @@ function NotesField({ notes, onSave }: { notes: string; onSave: (notes: string) 
           setDraft('')
           setOpen(true)
         }}
-        className="self-start text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+        className="inline-flex items-center gap-1.5 self-start text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
       >
-        + Add note
+        <NotebookPen className="size-3.5" />
+        {t.addNote}
       </button>
     )
   }
@@ -229,8 +253,8 @@ function NotesField({ notes, onSave }: { notes: string; onSave: (notes: string) 
         }
       }}
       rows={3}
-      placeholder="Where you left off, what to look for…"
-      aria-label="Notes"
+      placeholder={t.notesPlaceholder}
+      aria-label={t.notes}
       className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-950"
     />
   )
