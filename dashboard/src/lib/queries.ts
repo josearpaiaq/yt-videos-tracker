@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, type User, type Video, type VideoPatch } from './api'
+import { api, ApiError, type Preferences, type User, type Video, type VideoPatch } from './api'
 
 export const keys = { me: ['me'], lists: ['lists'], videos: ['videos'] }
 
@@ -23,6 +23,21 @@ export function useLogin() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: api.loginWithGoogle,
+    onSuccess: (user) => qc.setQueryData(keys.me, user),
+  })
+}
+
+/** Saves preferences optimistically so the UI switches immediately. */
+export function useUpdateMe() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.updateMe,
+    onMutate: (prefs: Preferences) => {
+      const previous = qc.getQueryData<User | null>(keys.me)
+      if (previous) qc.setQueryData(keys.me, { ...previous, ...prefs })
+      return { previous }
+    },
+    onError: (_err, _prefs, ctx) => qc.setQueryData(keys.me, ctx?.previous),
     onSuccess: (user) => qc.setQueryData(keys.me, user),
   })
 }

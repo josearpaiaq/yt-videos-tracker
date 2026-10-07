@@ -11,6 +11,8 @@ export default defineConfig({
     name: 'Where Was I',
     description: 'Remembers the minute you are at in YouTube videos and resumes from there.',
     // Host access to the API lets the popup and background send the session cookies.
+    // Caches the user and lists so the popup opens instantly.
+    permissions: ['storage'],
     host_permissions: [`${apiUrl}/*`],
   },
 });

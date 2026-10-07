@@ -184,3 +184,26 @@ func TestFindVideoByYouTubeID(t *testing.T) {
 		t.Errorf("found %d videos for unknown id, want 0", len(found))
 	}
 }
+
+func TestUpdatePreferences(t *testing.T) {
+	srv := newServer(t)
+	c := newClient(t, srv)
+	c.login("alice")
+
+	var me models.User
+	c.do("GET", "/api/me", nil, &me)
+	if me.Theme != "system" || me.Language != "" {
+		t.Fatalf("defaults: theme %q language %q, want system and empty", me.Theme, me.Language)
+	}
+
+	code := c.do("PATCH", "/api/me", map[string]string{"language": "es", "theme": "dark"}, &me)
+	if code != http.StatusOK || me.Language != "es" || me.Theme != "dark" {
+		t.Fatalf("update: status %d, user %+v", code, me)
+	}
+
+	for _, body := range []map[string]string{{"language": "fr"}, {"theme": "blue"}} {
+		if code := c.do("PATCH", "/api/me", body, nil); code != http.StatusBadRequest {
+			t.Errorf("PATCH %v: status %d, want 400", body, code)
+		}
+	}
+}

@@ -8,7 +8,10 @@ import (
 
 // Open connects to Postgres and migrates the schema.
 func Open(dsn string) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
+	// Simple protocol avoids server-side prepared statements, which Neon's
+	// pooler (PgBouncer) shares across connections: after a schema change a
+	// cached "SELECT *" plan fails with "cached plan must not change result type".
+	db, err := gorm.Open(postgres.New(postgres.Config{DSN: dsn, PreferSimpleProtocol: true}), &gorm.Config{TranslateError: true})
 	if err != nil {
 		return nil, err
 	}

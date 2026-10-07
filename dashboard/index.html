@@ -11,6 +11,15 @@
       rel="stylesheet"
     />
     <title>Where Was I</title>
+    <script>
+      // Apply the last theme before first paint to avoid a light/dark flash.
+      try {
+        var theme = localStorage.getItem('theme') || 'system'
+        var dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', dark)
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      } catch (e) {}
+    </script>
     <script src="https://accounts.google.com/gsi/client" async></script>
   </head>
   <body>

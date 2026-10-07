@@ -19,11 +19,14 @@ func (s VideoStatus) Valid() bool {
 }
 
 type User struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	GoogleSub string    `gorm:"uniqueIndex;not null" json:"-"`
-	Email     string    `gorm:"not null" json:"email"`
-	Name      string    `gorm:"not null;default:''" json:"name"`
-	AvatarURL string    `gorm:"not null;default:''" json:"avatar_url"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	GoogleSub string `gorm:"uniqueIndex;not null" json:"-"`
+	Email     string `gorm:"not null" json:"email"`
+	Name      string `gorm:"not null;default:''" json:"name"`
+	AvatarURL string `gorm:"not null;default:''" json:"avatar_url"`
+	// Language is "en", "es" or empty (follow the browser). Theme is "system", "light" or "dark".
+	Language  string    `gorm:"not null;default:''" json:"language"`
+	Theme     string    `gorm:"not null;default:system" json:"theme"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

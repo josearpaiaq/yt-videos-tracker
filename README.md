@@ -36,6 +36,18 @@ pnpm build
 
 In Chrome, open `chrome://extensions`, enable Developer mode, click "Load unpacked" and pick `extension/.output/chrome-mv3`. Sign in on the dashboard once; the extension reuses that session.
 
+## Make commands
+
+After the `.env` files are in place, the Makefile at the root runs everything (`make` comes preinstalled on macOS with the Xcode Command Line Tools):
+
+```sh
+make             # list the available commands
+make dev         # start the API and dashboard together
+make api         # start the API on :8080
+make dashboard   # install deps and start the dashboard on :5173
+make extension   # build and zip the extension into extension/.output/
+```
+
 ## Auth
 
 Google sign-in only. The API sets two HttpOnly cookies: a 15-minute access token and a refresh token that rotates on every use and expires after 60 days **without activity**, so regular use never requires signing in again.

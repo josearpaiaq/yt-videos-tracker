@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* The popup follows the user's theme from the API, not only the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   body {
     @apply w-80 bg-white font-sans text-sm text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;

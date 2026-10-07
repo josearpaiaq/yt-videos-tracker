@@ -37,6 +37,7 @@ func (h *Handler) Router() *gin.Engine {
 
 	protected := api.Group("", h.auth.Middleware())
 	protected.GET("/me", h.me)
+	protected.PATCH("/me", h.updateMe)
 
 	protected.GET("/lists", h.listLists)
 	protected.POST("/lists", h.createList)

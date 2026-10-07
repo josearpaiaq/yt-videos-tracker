@@ -3,6 +3,8 @@ import type { BackgroundMessage, BackgroundResponse } from '@/lib/messages';
 
 function handle(message: BackgroundMessage) {
   switch (message.type) {
+    case 'GET_ME':
+      return api.me();
     case 'FIND_VIDEO':
       return api.findVideo(message.youtubeId);
     case 'UPDATE_VIDEO':
