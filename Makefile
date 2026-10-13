@@ -1,13 +1,17 @@
+# Ports come from each project's .env (PORT=...), with the usual defaults.
+API_PORT := $(or $(shell sed -n "s/^PORT=['\"]*\([0-9]*\).*/\1/p" api/.env 2>/dev/null),8080)
+DASHBOARD_PORT := $(or $(shell sed -n "s/^PORT=['\"]*\([0-9]*\).*/\1/p" dashboard/.env 2>/dev/null),5173)
+
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "  dev        Start the API and dashboard together"
-	@echo "  api        Start the API on :8080"
-	@echo "  dashboard  Install deps and start the dashboard on :5173"
+	@echo "  api        Start the API on :$(API_PORT)"
+	@echo "  dashboard  Install deps and start the dashboard on :$(DASHBOARD_PORT)"
 	@echo "  extension  Build and zip the extension into extension/.output/"
 	@echo "  bg         Start the API and dashboard in the background (logs in /tmp/yt-*.log)"
-	@echo "  status     Show what is listening on :8080 and :5173"
-	@echo "  stop       Stop whatever is listening on :8080 and :5173"
+	@echo "  status     Show what is listening on :$(API_PORT) and :$(DASHBOARD_PORT)"
+	@echo "  stop       Stop whatever is listening on :$(API_PORT) and :$(DASHBOARD_PORT)"
 
 dev:
 	$(MAKE) -j2 api dashboard
@@ -32,9 +36,9 @@ bg: dashboard/node_modules
 	cd ./dashboard && nohup pnpm dev > /tmp/yt-dashboard.log 2>&1 &
 	@echo "Started. Logs: tail -f /tmp/yt-api.log /tmp/yt-dashboard.log"
 status:
-	@lsof -nP -iTCP:8080 -iTCP:5173 -sTCP:LISTEN || echo "Nothing running"
+	@lsof -nP -iTCP:$(API_PORT) -iTCP:$(DASHBOARD_PORT) -sTCP:LISTEN || echo "Nothing running"
 stop:
-	@pids=$$(lsof -nP -iTCP:8080 -iTCP:5173 -sTCP:LISTEN -t); \
+	@pids=$$(lsof -nP -iTCP:$(API_PORT) -iTCP:$(DASHBOARD_PORT) -sTCP:LISTEN -t); \
 	if [ -n "$$pids" ]; then kill $$pids && echo "Stopped $$pids"; else echo "Nothing running"; fi
 
 .PHONY: help dev api dashboard extension bg status stop
