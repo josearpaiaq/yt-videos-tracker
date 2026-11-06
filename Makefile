@@ -38,7 +38,7 @@ bg: dashboard/node_modules
 status:
 	@lsof -nP -iTCP:$(API_PORT) -iTCP:$(DASHBOARD_PORT) -sTCP:LISTEN || echo "Nothing running"
 stop:
-	@pids=$$(lsof -nP -iTCP:$(API_PORT) -iTCP:$(DASHBOARD_PORT) -sTCP:LISTEN -t); \
+	@pids=$$(lsof -nP -iTCP:$(API_PORT) -iTCP:$(DASHBOARD_PORT) -sTCP:LISTEN -t | xargs); \
 	if [ -n "$$pids" ]; then kill $$pids && echo "Stopped $$pids"; else echo "Nothing running"; fi
 
 .PHONY: help dev api dashboard extension bg status stop
